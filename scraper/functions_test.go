@@ -100,3 +100,57 @@ func TestURLSFromHTML(t *testing.T) {
 		})
 	}
 }
+
+func TestTitleFromHTML(t *testing.T) {
+	testCases := []struct {
+		name     string
+		html     string
+		expected string
+	}{
+		{
+			name:     "test case 1",
+			html:     `<html><head><title>Hello World</title></head><body></body></html>`,
+			expected: "Hello World",
+		},
+		{
+			name:     "test case 2",
+			html:     `<html><head><title>   Leading and trailing spaces   </title></head></html>`,
+			expected: "Leading and trailing spaces",
+		},
+		{
+			name:     "test case 3",
+			html:     `<html><head><title>Rock &amp; Roll</title></head></html>`,
+			expected: "Rock & Roll",
+		},
+		{
+			name:     "test case 4",
+			html:     `<html><head><title></title></head></html>`,
+			expected: "",
+		},
+		{
+			name: "test case 5",
+			html: `<html><head><title>
+Multiline
+Title
+</title></head></html>`,
+			expected: "Multiline Title",
+		},
+		{
+			name:     "test case 6",
+			html:     `<html><head><title>First</title><title>Second</title></head></html>`,
+			expected: "First",
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			title, err := titleFromHTML(testCase.html)
+			if err != nil {
+				t.Errorf("%s failed, unexpected error: %v", testCase.name, err)
+			}
+			if title != testCase.expected {
+				t.Errorf("%s failed, %s != %s", testCase.name, title, testCase.expected)
+			}
+		})
+	}
+}

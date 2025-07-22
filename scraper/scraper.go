@@ -6,8 +6,13 @@ import (
 	"sync"
 )
 
+type data struct {
+	title string
+	count int
+}
+
 type config struct {
-	pages     map[string]int
+	metadata  map[string]data
 	domain    *url.URL
 	mu        *sync.Mutex
 	control   chan struct{}
@@ -15,26 +20,26 @@ type config struct {
 	maxVisits int
 }
 
-func InitiateCrawl(baseURL string, maxConcurr, maxSites int) {
+func InitiateCrawl(baseURL string) {
 	domain, err := url.Parse(baseURL)
 	if err != nil {
 		log.Fatal(err)
 	}
 	local := config{
-		pages:     make(map[string]int),
+		metadata:  make(map[string]data),
 		domain:    domain,
 		mu:        &sync.Mutex{},
-		control:   make(chan struct{}, maxConcurr),
+		control:   make(chan struct{}, 5),
 		wg:        &sync.WaitGroup{},
-		maxVisits: maxSites,
+		maxVisits: 20,
 	}
 
 	local.wg.Add(1)
 	go local.crawlPage(baseURL)
 	local.wg.Wait() // blocks till wait group is empty
 
-	for key, value := range local.pages {
-		log.Printf("%s: %d", key, value)
+	for key, value := range local.metadata {
+		log.Printf("%s: %s", key, value.title)
 	}
 }
 
@@ -42,19 +47,34 @@ func (c *config) urlVisited(normCurrURL string) bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if _, ok := c.pages[normCurrURL]; ok {
-		c.pages[normCurrURL] += 1
+	if _, ok := c.metadata[normCurrURL]; ok {
+		c.metadata[normCurrURL] = data{
+			title: c.metadata[normCurrURL].title,
+			count: c.metadata[normCurrURL].count + 1,
+		}
 		return true
 	}
-	c.pages[normCurrURL] = 1
+	c.metadata[normCurrURL] = data{
+		count: 1,
+	}
 	return false
+}
+
+func (c *config) setTitle(normCurrURL, title string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.metadata[normCurrURL] = data{
+		title: title,
+		count: c.metadata[normCurrURL].count,
+	}
 }
 
 func (c *config) maxReached() bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if len(c.pages) >= c.maxVisits {
+	if len(c.metadata) >= c.maxVisits {
 		return true
 	}
 	return false
@@ -91,6 +111,13 @@ func (c *config) crawlPage(rawCurrURL string) {
 	if err != nil {
 		return
 	}
+
+	title, err := titleFromHTML(html)
+	if err != nil {
+		return
+	}
+	c.setTitle(normCurrURL, title)
+
 	links, err := urlsFromHTML(html, c.domain) // passing in domain name in case hrefs are missing hostname
 	if err != nil {
 		return

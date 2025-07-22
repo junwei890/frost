@@ -45,6 +45,32 @@ func normalizeURL(rawURL string) (string, error) { // helper function for checki
 	return urlStruct.Host + strings.TrimRight(urlStruct.Path, "/"), nil
 }
 
+func titleFromHTML(htmlBody string) (string, error) { // helper function for indexing
+	htmlTree, err := html.Parse(strings.NewReader(htmlBody))
+	if err != nil {
+		return "", err
+	}
+
+	var title string
+	for node := range htmlTree.Descendants() {
+		if node.Type == html.ElementNode && node.DataAtom == atom.Title {
+			for c := node.FirstChild; c != nil; c = c.NextSibling {
+				if c.Type == html.TextNode {
+					title = c.Data
+					break
+				}
+			}
+			if title != "" {
+				break
+			}
+		}
+	}
+
+	title = strings.Join(strings.Fields(title), " ")
+
+	return title, nil
+}
+
 func urlsFromHTML(htmlBody string, host *url.URL) ([]string, error) {
 	htmlTree, err := html.Parse(strings.NewReader(htmlBody))
 	if err != nil {
