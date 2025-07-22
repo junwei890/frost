@@ -7,24 +7,26 @@ import (
 )
 
 type config struct {
-	pages   map[string]int
-	domain  *url.URL
-	mu      *sync.Mutex
-	control chan struct{}
-	wg      *sync.WaitGroup
+	pages     map[string]int
+	domain    *url.URL
+	mu        *sync.Mutex
+	control   chan struct{}
+	wg        *sync.WaitGroup
+	maxVisits int
 }
 
-func InitiateCrawl(baseURL string) {
+func InitiateCrawl(baseURL string, maxConcurr, maxSites int) {
 	domain, err := url.Parse(baseURL)
 	if err != nil {
 		log.Fatal(err)
 	}
 	local := config{
-		pages:   make(map[string]int),
-		domain:  domain,
-		mu:      &sync.Mutex{},
-		control: make(chan struct{}, 5),
-		wg:      &sync.WaitGroup{},
+		pages:     make(map[string]int),
+		domain:    domain,
+		mu:        &sync.Mutex{},
+		control:   make(chan struct{}, maxConcurr),
+		wg:        &sync.WaitGroup{},
+		maxVisits: maxSites,
 	}
 
 	local.wg.Add(1)
@@ -34,11 +36,10 @@ func InitiateCrawl(baseURL string) {
 	for key, value := range local.pages {
 		log.Printf("%s: %d", key, value)
 	}
-
 }
 
-func (c *config) visitCheck(normCurrURL string) bool {
-	c.mu.Lock() // lock when reading or writing to map
+func (c *config) urlVisited(normCurrURL string) bool {
+	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	if _, ok := c.pages[normCurrURL]; ok {
@@ -49,12 +50,26 @@ func (c *config) visitCheck(normCurrURL string) bool {
 	return false
 }
 
+func (c *config) maxReached() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if len(c.pages) >= c.maxVisits {
+		return true
+	}
+	return false
+}
+
 func (c *config) crawlPage(rawCurrURL string) {
 	c.control <- struct{}{} // buffered channel limits number of requests/routines made
 	defer func() {
 		<-c.control
 		c.wg.Done()
 	}()
+
+	if c.maxReached() {
+		return
+	}
 
 	currStruct, err := url.Parse(rawCurrURL)
 	if err != nil {
@@ -68,7 +83,7 @@ func (c *config) crawlPage(rawCurrURL string) {
 	if err != nil {
 		return
 	}
-	if c.visitCheck(normCurrURL) { // checking if we already visited this site, return if yes
+	if c.urlVisited(normCurrURL) { // checking if we already visited this site, return if yes
 		return
 	}
 
