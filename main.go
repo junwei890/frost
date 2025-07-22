@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"net/url"
 	"os"
 
 	"github.com/junwei890/frost/scraper"
@@ -20,14 +19,5 @@ func main() {
 		log.Printf("starting crawl of: %s", arguments[1])
 	}
 
-	domain, err := url.Parse(arguments[1])
-	if err != nil {
-		log.Fatal(err)
-	}
-	pages := make(map[string]int)
-	scraper.CrawlPage(domain, arguments[1], pages)
-
-	for key, value := range pages {
-		log.Printf("%s: %d", key, value)
-	}
+	scraper.InitiateCrawl(arguments[1])
 }

@@ -1,6 +1,7 @@
 package scraper
 
 import (
+	"net/url"
 	"reflect"
 	"testing"
 )
@@ -85,7 +86,11 @@ func TestURLSFromHTML(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			result, err := urlsFromHTML(testCase.html, testCase.baseURL)
+			urlStruct, err := url.Parse(testCase.baseURL)
+			if err != nil {
+				t.Errorf("%s failed, unexpected error: %v", testCase.name, err)
+			}
+			result, err := urlsFromHTML(testCase.html, urlStruct)
 			if err != nil {
 				t.Errorf("%s failed, unexpected error: %v", testCase.name, err)
 			}

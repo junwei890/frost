@@ -11,7 +11,7 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
-func getHTML(rawURL string) (string, error) {
+func getHTML(rawURL string) (string, error) { // get request for full page html
 	client := &http.Client{}
 	res, err := client.Get(rawURL)
 	if err != nil {
@@ -36,7 +36,7 @@ func getHTML(rawURL string) (string, error) {
 	return string(resData), nil
 }
 
-func normalizeURL(rawURL string) (string, error) {
+func normalizeURL(rawURL string) (string, error) { // helper function for checking page visits
 	urlStruct, err := url.Parse(rawURL)
 	if err != nil {
 		return "", err
@@ -45,13 +45,13 @@ func normalizeURL(rawURL string) (string, error) {
 	return urlStruct.Host + strings.TrimRight(urlStruct.Path, "/"), nil
 }
 
-func urlsFromHTML(htmlBody, host string) ([]string, error) {
+func urlsFromHTML(htmlBody string, host *url.URL) ([]string, error) {
 	htmlTree, err := html.Parse(strings.NewReader(htmlBody))
 	if err != nil {
 		return []string{}, err
 	}
 
-	urls := []string{}
+	urls := []string{} // extracting all links from <a> tags
 	for node := range htmlTree.Descendants() {
 		if node.Type == html.ElementNode && node.DataAtom == atom.A {
 			for _, attr := range node.Attr {
@@ -62,11 +62,11 @@ func urlsFromHTML(htmlBody, host string) ([]string, error) {
 		}
 	}
 
-	for i, rawURL := range urls {
+	for i, rawURL := range urls { // and cleaning up if there's no host name
 		if urlStruct, err := url.Parse(rawURL); err != nil {
 			return []string{}, err
 		} else if urlStruct.Hostname() == "" {
-			urls[i] = host + urlStruct.String()
+			urls[i] = host.ResolveReference(urlStruct).String()
 		}
 	}
 
