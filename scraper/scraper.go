@@ -3,20 +3,26 @@ package scraper
 import (
 	"log"
 	"net/url"
+	"strings"
 	"sync"
+	"time"
+
+	"golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
 )
 
 type data struct {
 	title string
-	count int
+	text  []string
+	links []string
 }
 
 type config struct {
 	metadata  map[string]data
 	domain    *url.URL
 	mu        *sync.Mutex
-	control   chan struct{}
 	wg        *sync.WaitGroup
+	control   chan struct{}
 	maxVisits int
 }
 
@@ -29,18 +35,67 @@ func InitiateCrawl(baseURL string) {
 		metadata:  make(map[string]data),
 		domain:    domain,
 		mu:        &sync.Mutex{},
-		control:   make(chan struct{}, 5),
 		wg:        &sync.WaitGroup{},
+		control:   make(chan struct{}, 5),
 		maxVisits: 20,
 	}
 
+	timeStart := time.Now()
 	local.wg.Add(1)
 	go local.crawlPage(baseURL)
-	local.wg.Wait() // blocks till wait group is empty
+	local.wg.Wait()
 
-	for key, value := range local.metadata {
-		log.Printf("%s: %s", key, value.title)
+	for key := range local.metadata {
+		log.Println(key)
 	}
+	log.Println(time.Since(timeStart))
+}
+
+func (c *config) dataFromHTML(normCurrURL, htmlBody string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	htmlTree, err := html.Parse(strings.NewReader(htmlBody))
+	if err != nil {
+		return err
+	}
+	urlData := data{
+		title: "",
+		text:  []string{},
+		links: []string{},
+	}
+
+	for n := range htmlTree.Descendants() {
+		if n.Type == html.ElementNode && n.DataAtom == atom.A {
+			for _, attr := range n.Attr {
+				if attr.Key == "href" {
+					if urlStruct, err := url.Parse(attr.Val); err != nil {
+						return err
+					} else if urlStruct.Hostname() == "" {
+						urlData.links = append(urlData.links, c.domain.ResolveReference(urlStruct).String())
+						continue
+					}
+					urlData.links = append(urlData.links, attr.Val)
+				}
+			}
+		}
+		if n.Type == html.ElementNode && n.DataAtom == atom.Title {
+			for c := n.FirstChild; c != nil; c = c.NextSibling {
+				if c.Type == html.TextNode {
+					urlData.title = strings.Join(strings.Fields(c.Data), " ")
+				}
+			}
+		}
+		if n.Type == html.ElementNode && n.DataAtom == atom.P {
+			for c := n.FirstChild; c != nil; c = c.NextSibling {
+				if c.Type == html.TextNode {
+					urlData.text = append(urlData.text, strings.Join(strings.Fields(c.Data), " "))
+				}
+			}
+		}
+	}
+	c.metadata[normCurrURL] = urlData
+	return nil
 }
 
 func (c *config) urlVisited(normCurrURL string) bool {
@@ -48,26 +103,10 @@ func (c *config) urlVisited(normCurrURL string) bool {
 	defer c.mu.Unlock()
 
 	if _, ok := c.metadata[normCurrURL]; ok {
-		c.metadata[normCurrURL] = data{
-			title: c.metadata[normCurrURL].title,
-			count: c.metadata[normCurrURL].count + 1,
-		}
 		return true
 	}
-	c.metadata[normCurrURL] = data{
-		count: 1,
-	}
+	c.metadata[normCurrURL] = data{}
 	return false
-}
-
-func (c *config) setTitle(normCurrURL, title string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	c.metadata[normCurrURL] = data{
-		title: title,
-		count: c.metadata[normCurrURL].count,
-	}
 }
 
 func (c *config) maxReached() bool {
@@ -81,7 +120,7 @@ func (c *config) maxReached() bool {
 }
 
 func (c *config) crawlPage(rawCurrURL string) {
-	c.control <- struct{}{} // buffered channel limits number of requests/routines made
+	c.control <- struct{}{}
 	defer func() {
 		<-c.control
 		c.wg.Done()
@@ -90,20 +129,18 @@ func (c *config) crawlPage(rawCurrURL string) {
 	if c.maxReached() {
 		return
 	}
-
 	currStruct, err := url.Parse(rawCurrURL)
 	if err != nil {
 		return
 	}
-	if c.domain.Hostname() != currStruct.Hostname() { // only want to scrape within given domain
+	if c.domain.Hostname() != currStruct.Hostname() {
 		return
 	}
-
 	normCurrURL, err := normalizeURL(rawCurrURL)
 	if err != nil {
 		return
 	}
-	if c.urlVisited(normCurrURL) { // checking if we already visited this site, return if yes
+	if c.urlVisited(normCurrURL) {
 		return
 	}
 
@@ -111,18 +148,11 @@ func (c *config) crawlPage(rawCurrURL string) {
 	if err != nil {
 		return
 	}
-
-	title, err := titleFromHTML(html)
-	if err != nil {
+	if err := c.dataFromHTML(normCurrURL, html); err != nil {
 		return
 	}
-	c.setTitle(normCurrURL, title)
 
-	links, err := urlsFromHTML(html, c.domain) // passing in domain name in case hrefs are missing hostname
-	if err != nil {
-		return
-	}
-	for _, link := range links {
+	for _, link := range c.metadata[normCurrURL].links {
 		c.wg.Add(1)
 		log.Printf("crawling %s", link)
 		go c.crawlPage(link)

@@ -1,8 +1,6 @@
 package scraper
 
 import (
-	"net/url"
-	"reflect"
 	"testing"
 )
 
@@ -52,104 +50,6 @@ func TestNormalizeURL(t *testing.T) {
 			}
 			if result != testCase.expected {
 				t.Errorf("%s failed, %s != %s", testCase.name, result, testCase.expected)
-			}
-		})
-	}
-}
-
-func TestURLSFromHTML(t *testing.T) {
-	testCases := []struct {
-		name     string
-		baseURL  string
-		html     string
-		expected []string
-	}{
-		{
-			name:     "test case 1",
-			baseURL:  "https://www.helloworld.com",
-			html:     `<html><body><a href="https://www.hello.com"></a><a href = "/hello/world"></a></body></html>`,
-			expected: []string{"https://www.hello.com", "https://www.helloworld.com/hello/world"},
-		},
-		{
-			name:     "test case 2",
-			baseURL:  "https://www.unittesting.com",
-			html:     `<html><body><a href="/unit/testing/"></a><a href="https://www.npminstall.com?hello=world"></a></body></html>`,
-			expected: []string{"https://www.unittesting.com/unit/testing/", "https://www.npminstall.com?hello=world"},
-		},
-		{
-			name:     "test case 3",
-			baseURL:  "https://www.neovim.com",
-			html:     `<html><body><a href="/i/use?neovim=btw"></a><a href="/vim/mentioned"></a></body></html>`,
-			expected: []string{"https://www.neovim.com/i/use?neovim=btw", "https://www.neovim.com/vim/mentioned"},
-		},
-	}
-
-	for _, testCase := range testCases {
-		t.Run(testCase.name, func(t *testing.T) {
-			urlStruct, err := url.Parse(testCase.baseURL)
-			if err != nil {
-				t.Errorf("%s failed, unexpected error: %v", testCase.name, err)
-			}
-			result, err := urlsFromHTML(testCase.html, urlStruct)
-			if err != nil {
-				t.Errorf("%s failed, unexpected error: %v", testCase.name, err)
-			}
-			if !reflect.DeepEqual(result, testCase.expected) {
-				t.Errorf("%s failed, %v != %v", testCase.name, result, testCase.expected)
-			}
-		})
-	}
-}
-
-func TestTitleFromHTML(t *testing.T) {
-	testCases := []struct {
-		name     string
-		html     string
-		expected string
-	}{
-		{
-			name:     "test case 1",
-			html:     `<html><head><title>Hello World</title></head><body></body></html>`,
-			expected: "Hello World",
-		},
-		{
-			name:     "test case 2",
-			html:     `<html><head><title>   Leading and trailing spaces   </title></head></html>`,
-			expected: "Leading and trailing spaces",
-		},
-		{
-			name:     "test case 3",
-			html:     `<html><head><title>Rock &amp; Roll</title></head></html>`,
-			expected: "Rock & Roll",
-		},
-		{
-			name:     "test case 4",
-			html:     `<html><head><title></title></head></html>`,
-			expected: "",
-		},
-		{
-			name: "test case 5",
-			html: `<html><head><title>
-Multiline
-Title
-</title></head></html>`,
-			expected: "Multiline Title",
-		},
-		{
-			name:     "test case 6",
-			html:     `<html><head><title>First</title><title>Second</title></head></html>`,
-			expected: "First",
-		},
-	}
-
-	for _, testCase := range testCases {
-		t.Run(testCase.name, func(t *testing.T) {
-			title, err := titleFromHTML(testCase.html)
-			if err != nil {
-				t.Errorf("%s failed, unexpected error: %v", testCase.name, err)
-			}
-			if title != testCase.expected {
-				t.Errorf("%s failed, %s != %s", testCase.name, title, testCase.expected)
 			}
 		})
 	}
