@@ -1,14 +1,14 @@
-package scraper
+package crawler
 
 import (
 	"log"
 	"net/url"
 	"strings"
 	"sync"
-	"time"
 
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
+	"github.com/junwei890/joltik/server"
 )
 
 type data struct {
@@ -26,7 +26,7 @@ type config struct {
 	maxVisits int
 }
 
-func InitiateCrawl(baseURL string) {
+func InitiateCrawl(baseURL string) ([]server.CrawlerRes, error) {
 	domain, err := url.Parse(baseURL)
 	if err != nil {
 		log.Fatal(err)
@@ -40,15 +40,19 @@ func InitiateCrawl(baseURL string) {
 		maxVisits: 20,
 	}
 
-	timeStart := time.Now()
 	local.wg.Add(1)
 	go local.crawlPage(baseURL)
 	local.wg.Wait()
 
-	for key := range local.metadata {
-		log.Println(key)
+	res := []server.CrawlerRes{}
+	for key, value := range local.metadata {
+		res = append(res, server.CrawlerRes{
+			URL: key,
+			Title: value.title,
+			Content: value.text,
+		})
 	}
-	log.Println(time.Since(timeStart))
+	return res, nil
 }
 
 func (c *config) dataFromHTML(normCurrURL, htmlBody string) error {

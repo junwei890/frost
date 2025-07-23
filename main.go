@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/junwei890/frost/scraper"
+	"github.com/junwei890/joltik/crawler"
 )
 
 func main() {
@@ -19,5 +19,5 @@ func main() {
 		log.Printf("starting crawl of %s", arguments[1])
 	}
 
-	scraper.InitiateCrawl(arguments[1])
+	crawler.InitiateCrawl(arguments[1])
 }

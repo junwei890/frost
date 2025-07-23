@@ -1,4 +1,4 @@
-module github.com/junwei890/frost
+module github.com/junwei890/joltik
 
 go 1.24.4
 
