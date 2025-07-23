@@ -19,5 +19,9 @@ func main() {
 		log.Printf("starting crawl of %s", arguments[1])
 	}
 
-	crawler.InitiateCrawl(arguments[1])
+	res, err := crawler.InitiateCrawl(arguments[1])
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println(res)
 }
