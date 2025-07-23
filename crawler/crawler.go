@@ -8,7 +8,7 @@ import (
 
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
-	"github.com/junwei890/joltik/server"
+	"github.com/junwei890/rumbling/server"
 )
 
 type data struct {

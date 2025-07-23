@@ -1,4 +1,4 @@
-module github.com/junwei890/joltik
+module github.com/junwei890/rumbling
 
 go 1.24.4
 

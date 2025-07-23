@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/junwei890/joltik/crawler"
+	"github.com/junwei890/rumbling/crawler"
 )
 
 func main() {
