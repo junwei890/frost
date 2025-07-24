@@ -3,9 +3,9 @@ package crawler
 import (
 	"log"
 	"net/url"
+	"regexp"
 	"strings"
 	"sync"
-	"regexp"
 
 	"github.com/junwei890/rumbling/server"
 	"golang.org/x/net/html"
@@ -50,8 +50,8 @@ func InitiateCrawl(baseURL string) ([]server.CrawlerRes, error) {
 			continue
 		}
 		res = append(res, server.CrawlerRes{
-			URL:     key,
-			Content: value.text,
+			URL: key,
+			Doc: strings.Fields(strings.Join(value.text, " ")),
 		})
 	}
 	return res, nil
@@ -87,13 +87,17 @@ func (c *config) dataFromHTML(normCurrURL, htmlBody string) error {
 		if n.Type == html.ElementNode && (n.DataAtom == atom.P || n.DataAtom == atom.H1 || n.DataAtom == atom.Title) {
 			for c := n.FirstChild; c != nil; c = c.NextSibling {
 				if c.Type == html.TextNode {
-					semiClean := strings.TrimSpace(strings.ToLower(strings.ReplaceAll(c.Data, "\n", " ")))
 					re, err := regexp.Compile(`[[:punct:]]`)
 					if err != nil {
 						return err
 					}
-					cleanText := re.ReplaceAllString(semiClean, "")
-					urlData.text = append(urlData.text, cleanText)
+					re1, err := regexp.Compile(`[^\p{L}\p{N} ]+`)
+					if err != nil {
+						return err
+					}
+					semiClean := re.ReplaceAllString(strings.ToLower(c.Data), " ")
+					clean := re1.ReplaceAllString(semiClean, "")
+					urlData.text = append(urlData.text, clean)
 				}
 			}
 		}

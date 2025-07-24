@@ -1,7 +1,6 @@
 package server
 
 type CrawlerRes struct {
-	URL string `json:"url"`
-	Content []string `json:"content"`
+	URL string
+	Doc []string
 }
-
