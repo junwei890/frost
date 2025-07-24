@@ -95,7 +95,7 @@ func (c *config) dataFromHTML(normCurrURL, htmlBody string) error {
 					if err != nil {
 						return err
 					}
-					semiClean := re.ReplaceAllString(strings.ToLower(c.Data), " ")
+					semiClean := re.ReplaceAllString(strings.ToLower(c.Data), "")
 					clean := re1.ReplaceAllString(semiClean, "")
 					urlData.text = append(urlData.text, clean)
 				}

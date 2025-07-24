@@ -17,28 +17,28 @@ type tf struct {
 	tfScore map[string]float64
 }
 
-type tfidf struct {
-	url        string
-	tfidfScore map[string]float64
+type Tfidf struct {
+	Url         string
+	TfidfScores map[string]float64
 }
 
-func tfidfCalc(docs []server.CrawlerRes) []tfidf {
+func TfidfCalc(corpus []server.CrawlerRes) []Tfidf {
 	agged := []agg{}
-	for _, doc := range docs {
-		total := 0
-		freq := make(map[string]int)
+	for _, doc := range corpus {
+		wordsInDoc := 0
+		freqInDoc := make(map[string]int)
 		for _, word := range doc.Doc {
-			total++
-			if _, ok := freq[string(word)]; ok {
-				freq[string(word)]++
+			wordsInDoc++
+			if _, ok := freqInDoc[string(word)]; ok {
+				freqInDoc[string(word)]++
 				continue
 			}
-			freq[string(word)] = 1
+			freqInDoc[string(word)] = 1
 		}
 		agged = append(agged, agg{
 			url:      doc.URL,
-			docTotal: total,
-			wordFreq: freq,
+			docTotal: wordsInDoc,
+			wordFreq: freqInDoc,
 		})
 	}
 
@@ -60,18 +60,68 @@ func tfidfCalc(docs []server.CrawlerRes) []tfidf {
 		})
 	}
 
-	finalTFIDF := []tfidf{}
+	TFIDFScores := []Tfidf{}
 	for _, data := range tfScores {
 		tfidfPerDoc := make(map[string]float64)
 		for key, value := range data.tfScore {
-			idfScore := math.Log10(float64(len(docs)) / float64(idfRef[key]))
+			idfScore := math.Log10(float64(len(corpus)) / float64(idfRef[key]))
 			tfidfPerDoc[key] = float64(idfScore) * float64(value)
 		}
-		finalTFIDF = append(finalTFIDF, tfidf{
-			url:        data.url,
-			tfidfScore: tfidfPerDoc,
+		TFIDFScores = append(TFIDFScores, Tfidf{
+			Url:         data.url,
+			TfidfScores: tfidfPerDoc,
 		})
 	}
 
-	return finalTFIDF
+	return TFIDFScores
+}
+
+type rawStats struct {
+	url          string
+	totalTFIDF   float64
+	observations int
+	tfidfScores  map[string]float64
+}
+
+type Cleaned struct {
+	Url   string
+	Words []string
+}
+
+func StopWordRm(corpus []Tfidf) []Cleaned {
+	tfidfStats := []rawStats{}
+	for _, doc := range corpus {
+		statsPerDoc := rawStats{
+			url:          doc.Url,
+			totalTFIDF:   0.0,
+			observations: 0,
+			tfidfScores:  doc.TfidfScores,
+		}
+		for _, value := range doc.TfidfScores {
+			statsPerDoc.totalTFIDF += value
+			statsPerDoc.observations++
+		}
+		tfidfStats = append(tfidfStats, statsPerDoc)
+	}
+
+	cleanedDocs := []Cleaned{}
+	for _, stats := range tfidfStats {
+		cleanedDoc := Cleaned{
+			Url:   stats.url,
+			Words: []string{},
+		}
+		summation := 0.0
+		for _, value := range stats.tfidfScores {
+			summation += math.Pow((value - (stats.totalTFIDF / float64(stats.observations))), 2.0)
+		}
+		sd := math.Sqrt(summation / float64(stats.observations-1))
+		for key, value := range stats.tfidfScores {
+			if value < ((stats.totalTFIDF / float64(stats.observations)) - (0.7 * sd)) {
+				cleanedDoc.Words = append(cleanedDoc.Words, key)
+			}
+		}
+		cleanedDocs = append(cleanedDocs, cleanedDoc)
+	}
+
+	return cleanedDocs
 }
