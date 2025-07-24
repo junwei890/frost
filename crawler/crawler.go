@@ -6,9 +6,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/junwei890/rumbling/server"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
-	"github.com/junwei890/rumbling/server"
 )
 
 type data struct {
@@ -50,8 +50,8 @@ func InitiateCrawl(baseURL string) ([]server.CrawlerRes, error) {
 			continue
 		}
 		res = append(res, server.CrawlerRes{
-			URL: key,
-			Title: value.title,
+			URL:     key,
+			Title:   value.title,
 			Content: value.text,
 		})
 	}
@@ -89,14 +89,14 @@ func (c *config) dataFromHTML(normCurrURL, htmlBody string) error {
 		if n.Type == html.ElementNode && n.DataAtom == atom.Title {
 			for c := n.FirstChild; c != nil; c = c.NextSibling {
 				if c.Type == html.TextNode {
-					urlData.title = strings.Join(strings.Fields(c.Data), " ")
+					urlData.title = strings.ToLower(strings.Join(strings.Fields(c.Data), " "))
 				}
 			}
 		}
-		if n.Type == html.ElementNode && n.DataAtom == atom.P {
+		if n.Type == html.ElementNode && (n.DataAtom == atom.P || n.DataAtom == atom.H1) {
 			for c := n.FirstChild; c != nil; c = c.NextSibling {
 				if c.Type == html.TextNode {
-					urlData.text = append(urlData.text, strings.Join(strings.Fields(c.Data), " "))
+					urlData.text = append(urlData.text, strings.ToLower(strings.Join(strings.Fields(c.Data), " ")))
 				}
 			}
 		}

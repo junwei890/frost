@@ -23,5 +23,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println(res)
+	for _, data := range res {
+		log.Println(data.URL)
+		log.Println(data.Title)
+		log.Println(data.Content)
+	}
 }
