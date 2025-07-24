@@ -25,7 +25,6 @@ func main() {
 	}
 	for _, data := range res {
 		log.Println(data.URL)
-		log.Println(data.Title)
 		log.Println(data.Content)
 	}
 }

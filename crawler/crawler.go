@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"regexp"
 
 	"github.com/junwei890/rumbling/server"
 	"golang.org/x/net/html"
@@ -12,7 +13,6 @@ import (
 )
 
 type data struct {
-	title string
 	text  []string
 	links []string
 }
@@ -46,12 +46,11 @@ func InitiateCrawl(baseURL string) ([]server.CrawlerRes, error) {
 
 	res := []server.CrawlerRes{}
 	for key, value := range local.metadata {
-		if value.text == nil || value.title == "" {
+		if value.text == nil {
 			continue
 		}
 		res = append(res, server.CrawlerRes{
 			URL:     key,
-			Title:   value.title,
 			Content: value.text,
 		})
 	}
@@ -67,7 +66,6 @@ func (c *config) dataFromHTML(normCurrURL, htmlBody string) error {
 		return err
 	}
 	urlData := data{
-		title: "",
 		text:  []string{},
 		links: []string{},
 	}
@@ -86,17 +84,16 @@ func (c *config) dataFromHTML(normCurrURL, htmlBody string) error {
 				}
 			}
 		}
-		if n.Type == html.ElementNode && n.DataAtom == atom.Title {
+		if n.Type == html.ElementNode && (n.DataAtom == atom.P || n.DataAtom == atom.H1 || n.DataAtom == atom.Title) {
 			for c := n.FirstChild; c != nil; c = c.NextSibling {
 				if c.Type == html.TextNode {
-					urlData.title = strings.ToLower(strings.Join(strings.Fields(c.Data), " "))
-				}
-			}
-		}
-		if n.Type == html.ElementNode && (n.DataAtom == atom.P || n.DataAtom == atom.H1) {
-			for c := n.FirstChild; c != nil; c = c.NextSibling {
-				if c.Type == html.TextNode {
-					urlData.text = append(urlData.text, strings.ToLower(strings.Join(strings.Fields(c.Data), " ")))
+					semiClean := strings.TrimSpace(strings.ToLower(strings.ReplaceAll(c.Data, "\n", " ")))
+					re, err := regexp.Compile(`[[:punct:]]`)
+					if err != nil {
+						return err
+					}
+					cleanText := re.ReplaceAllString(semiClean, "")
+					urlData.text = append(urlData.text, cleanText)
 				}
 			}
 		}
