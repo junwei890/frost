@@ -2,7 +2,7 @@ package server
 
 type CrawlerRes struct {
 	URL string
-	Doc string
+	Doc []string
 }
 
 type RakeRes struct {

@@ -1,4 +1,4 @@
-package tfidf
+package inverted_index
 
 import (
 	"math"

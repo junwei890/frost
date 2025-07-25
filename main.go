@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/junwei890/rumbling/crawler"
+	"github.com/junwei890/rumbling/rake"
 )
 
 func main() {
@@ -24,8 +25,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	for _, crawl := range res {
-		log.Println(crawl.URL)
-		log.Println(crawl.Doc)
+	for _, res := range res {
+		doc := rake.TextProcessing(res)
+		log.Println(doc.Url)
+		for _, cleaned := range doc.StopWordsRm {
+			log.Println(cleaned)
+		}
 	}
 }
