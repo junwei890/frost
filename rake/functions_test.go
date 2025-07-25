@@ -20,8 +20,8 @@ func TestTextProcessing(t *testing.T) {
 				Doc: []string{"i", "love", "pizza", "and", "hamburgers"},
 			},
 			expected: ProcessedText{
-				Url:     "bruh",
-				Cleaned: []string{"love pizza", "hamburgers"},
+				Url:       "bruh",
+				Delimited: []string{"love pizza", "hamburgers"},
 			},
 		},
 		{
@@ -32,7 +32,7 @@ func TestTextProcessing(t *testing.T) {
 			},
 			expected: ProcessedText{
 				Url:     "bruh",
-				Cleaned: []string{"need wingstop"},
+				Delimited: []string{"need wingstop"},
 			},
 		},
 		{
@@ -43,7 +43,7 @@ func TestTextProcessing(t *testing.T) {
 			},
 			expected: ProcessedText{
 				Url:     "bruh",
-				Cleaned: []string{},
+				Delimited: []string{},
 			},
 		},
 		{
@@ -54,7 +54,7 @@ func TestTextProcessing(t *testing.T) {
 			},
 			expected: ProcessedText{
 				Url:     "bruh",
-				Cleaned: []string{"hello nice meeting"},
+				Delimited: []string{"hello nice meeting"},
 			},
 		},
 		{
@@ -65,7 +65,7 @@ func TestTextProcessing(t *testing.T) {
 			},
 			expected: ProcessedText{
 				Url:     "bruh",
-				Cleaned: []string{"hello", "hi"},
+				Delimited: []string{"hello", "hi"},
 			},
 		},
 		{
@@ -76,7 +76,7 @@ func TestTextProcessing(t *testing.T) {
 			},
 			expected: ProcessedText{
 				Url:     "bruh",
-				Cleaned: []string{"hello good morning wonderful day"},
+				Delimited: []string{"hello good morning wonderful day"},
 			},
 		},
 		{
@@ -87,8 +87,8 @@ func TestTextProcessing(t *testing.T) {
 			},
 			expected: ProcessedText{
 				Url:     "bruh",
-				Cleaned: []string{},
-			},		
+				Delimited: []string{},
+			},
 		},
 	}
 
@@ -96,7 +96,7 @@ func TestTextProcessing(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			output := TextProcessing(testCase.input)
 			if comp := reflect.DeepEqual(output, testCase.expected); !comp {
-				t.Errorf("%s failed, %v != %v", testCase.name, output.Cleaned, testCase.expected.Cleaned)
+				t.Errorf("%s failed, %v != %v", testCase.name, output.Delimited, testCase.expected.Delimited)
 			}
 		})
 	}

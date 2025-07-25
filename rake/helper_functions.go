@@ -27,12 +27,12 @@ var delimiters = map[string]struct{}{
 	"so": {}, "than": {}, "too": {}, "very": {}, "can": {}, "will": {}, "just": {}, "dont": {}, "doesnt": {},
 	"didnt": {}, "hasnt": {}, "havent": {}, "isnt": {}, "wasnt": {}, "wont": {}, "would": {}, "wouldnt": {},
 	"could": {}, "couldnt": {}, "should": {}, "shouldnt": {}, "must": {}, "mustnt": {}, "let": {}, "lets": {},
-	"theres": {}, "wouldve": {}, "couldve": {}, "shouldve": {},
+	"theres": {}, "wouldve": {}, "couldve": {}, "shouldve": {}, "s": {}, "t": {}, "don": {}, "now": {},
 }
 
 type ProcessedText struct {
 	Url         string
-	StopWordsRm []string
+	Delimited []string
 }
 
 func TextProcessing(doc server.CrawlerRes) ProcessedText {
@@ -54,11 +54,14 @@ func TextProcessing(doc server.CrawlerRes) ProcessedText {
 		}
 		if i == (len(doc.Doc) - 1) {
 			term := strings.Join(doc.Doc[curr:i+1], " ")
-			cleanedDoc = append(cleanedDoc, term)
+			if strings.TrimSpace(term) == "" {
+				continue
+			}
+			cleanedDoc = append(cleanedDoc, strings.TrimSpace(term))
 		}
 	}
 	return ProcessedText{
 		Url:         doc.URL,
-		StopWordsRm: cleanedDoc,
+		Delimited: cleanedDoc,
 	}
 }

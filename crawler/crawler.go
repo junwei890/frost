@@ -51,7 +51,7 @@ func InitiateCrawl(baseURL string) ([]server.CrawlerRes, error) {
 		}
 		res = append(res, server.CrawlerRes{
 			URL: key,
-			Doc: strings.Split(strings.Join(value.text, " "), " "),
+			Doc: strings.Fields(strings.Join(value.text, " ")),
 		})
 	}
 	return res, nil

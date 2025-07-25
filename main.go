@@ -28,7 +28,7 @@ func main() {
 	for _, res := range res {
 		doc := rake.TextProcessing(res)
 		log.Println(doc.Url)
-		for _, cleaned := range doc.StopWordsRm {
+		for _, cleaned := range doc.Delimited {
 			log.Println(cleaned)
 		}
 	}
