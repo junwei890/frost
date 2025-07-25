@@ -31,7 +31,7 @@ var delimiters = map[string]struct{}{
 }
 
 type ProcessedText struct {
-	Url         string
+	Url       string
 	Delimited []string
 }
 
@@ -45,14 +45,11 @@ func TextProcessing(doc server.CrawlerRes) ProcessedText {
 				return ok
 			})
 			term := strings.Join(termSlice, " ")
-			if strings.TrimSpace(term) == "" {
-				continue
+			if strings.TrimSpace(term) != "" {
+				cleanedDoc = append(cleanedDoc, strings.TrimSpace(term))
+				curr = i + 1
 			}
-			cleanedDoc = append(cleanedDoc, strings.TrimSpace(term))
-			curr = i + 1
-			continue
-		}
-		if i == (len(doc.Doc) - 1) {
+		} else if i == (len(doc.Doc) - 1) {
 			term := strings.Join(doc.Doc[curr:i+1], " ")
 			if strings.TrimSpace(term) == "" {
 				continue
@@ -61,7 +58,63 @@ func TextProcessing(doc server.CrawlerRes) ProcessedText {
 		}
 	}
 	return ProcessedText{
-		Url:         doc.URL,
+		Url:       doc.URL,
 		Delimited: cleanedDoc,
+	}
+}
+
+type CoGraph struct {
+	Url   string
+	Graph map[string][]string
+}
+
+func CoOccurence(doc ProcessedText) CoGraph {
+	wordMap := make(map[string][]string)
+	for _, term := range doc.Delimited {
+		if len(strings.Fields(term)) > 1 {
+			for word := range strings.FieldsSeq(term) {
+				if _, ok := wordMap[word]; !ok {
+					wordMap[word] = []string{}
+				}
+			}
+		} else if _, ok := wordMap[term]; !ok {
+			wordMap[term] = []string{}
+		}
+	}
+
+	for _, term := range doc.Delimited {
+		if len(strings.Fields(term)) > 1 {
+			phrase := strings.Fields(term)
+			track := make(map[string]int)
+			set := []string{}
+			for _, word := range phrase {
+				if _, ok := track[word]; !ok {
+					track[word] = 1
+					set = append(set, word)
+				} else {
+					track[word]++
+				}
+			}
+			for key, value := range track {
+				if value == 1 {
+					wordMap[key] = slices.Concat(wordMap[key], set)
+				} else {
+					for range value {
+						wordMap[key] = append(wordMap[key], key)
+					}
+					for _, word := range set {
+						if key != word {
+							wordMap[key] = append(wordMap[key], word)
+						}
+					}
+				}
+			}
+		} else {
+			wordMap[term] = append(wordMap[term], term)
+		}
+	}
+	return CoGraph{
+		Url:   doc.Url,
+		Graph: wordMap,
 	}
 }

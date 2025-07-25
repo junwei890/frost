@@ -27,9 +27,9 @@ func main() {
 
 	for _, res := range res {
 		doc := rake.TextProcessing(res)
-		log.Println(doc.Url)
-		for _, cleaned := range doc.Delimited {
-			log.Println(cleaned)
+		graph := rake.CoOccurence(doc)
+		for key, value := range graph.Graph {
+			log.Printf("%s: %v", key, value)
 		}
 	}
 }

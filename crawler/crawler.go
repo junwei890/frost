@@ -46,13 +46,12 @@ func InitiateCrawl(baseURL string) ([]server.CrawlerRes, error) {
 
 	res := []server.CrawlerRes{}
 	for key, value := range local.metadata {
-		if value.text == nil {
-			continue
+		if value.text != nil {
+			res = append(res, server.CrawlerRes{
+				URL: key,
+				Doc: strings.Fields(strings.Join(value.text, " ")),
+			})
 		}
-		res = append(res, server.CrawlerRes{
-			URL: key,
-			Doc: strings.Fields(strings.Join(value.text, " ")),
-		})
 	}
 	return res, nil
 }
@@ -84,7 +83,7 @@ func (c *config) dataFromHTML(normCurrURL, htmlBody string) error {
 				}
 			}
 		}
-		if n.Type == html.ElementNode && (n.DataAtom == atom.P || n.DataAtom == atom.H1 || n.DataAtom == atom.Title) {
+		if n.Type == html.ElementNode && n.DataAtom == atom.P {
 			for c := n.FirstChild; c != nil; c = c.NextSibling {
 				if c.Type == html.TextNode {
 					re, err := regexp.Compile(`[^a-zA-Z0-9\s]`)
