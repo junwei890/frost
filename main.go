@@ -28,7 +28,8 @@ func main() {
 	for _, res := range res {
 		doc := rake.TextProcessing(res)
 		graph := rake.CoOccurence(doc)
-		for key, value := range graph.Graph {
+		scores := rake.DegFreqCalc(graph)
+		for key, value := range scores.Scores {
 			log.Printf("%s: %v", key, value)
 		}
 	}

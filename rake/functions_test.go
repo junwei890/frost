@@ -231,7 +231,7 @@ func TestCoOccurence(t *testing.T) {
 			},
 		},
 		{
-			name: "test case 3",
+			name: "test case 8",
 			input: ProcessedText{
 				Url: "",
 				Delimited: []string{
@@ -241,7 +241,7 @@ func TestCoOccurence(t *testing.T) {
 			expected: CoGraph{
 				Url: "",
 				Graph: map[string][]string{
-					"hi": {"hi", "hi", "hello", "hi"},
+					"hi":    {"hi", "hi", "hello", "hi"},
 					"hello": {"hello", "hello", "hi", "hello"},
 				},
 			},
@@ -253,6 +253,93 @@ func TestCoOccurence(t *testing.T) {
 			result := CoOccurence(testCase.input)
 			if comp := reflect.DeepEqual(result, testCase.expected); !comp {
 				t.Errorf("%s failed, %v != %v", testCase.name, result.Graph, testCase.expected.Graph)
+			}
+		})
+	}
+}
+
+func TestDegFreqCalc(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    CoGraph
+		expected WordScores
+	}{
+		{
+			name: "test case 1",
+			input: CoGraph{
+				Url: "bruh",
+				Graph: map[string][]string{
+					"cloud":      {"cloud", "bill"},
+					"bill":       {"cloud", "bill"},
+					"sent":       {"sent"},
+					"scientific": {"scientific", "notation"},
+					"notation":   {"scientific", "notation"},
+				},
+			},
+			expected: WordScores{
+				Url: "bruh",
+				Scores: map[string]float64{
+					"cloud": 2.0,
+					"bill": 2.0,
+					"sent": 1.0,
+					"scientific": 2.0,
+					"notation": 2.0,
+				},
+			},
+		},
+		{
+			name: "test case 2",
+			input: CoGraph{
+				Url: "bruh",
+				Graph: map[string][]string{
+					"stop":       {"stop", "words", "wing", "stop", "stop", "sign"},
+					"words":      {"stop", "words"},
+					"delimiters": {"delimiters"},
+					"wing":       {"wing", "stop"},
+					"sign":       {"stop", "sign"},
+				},
+			},
+			expected: WordScores{
+				Url: "bruh",
+				Scores: map[string]float64{
+					"stop": 2.0,
+					"words": 2.0,
+					"delimiters": 1.0,
+					"wing": 2.0,
+					"sign": 2.0,
+				},
+			},
+		},
+		{
+			name: "test case 3",
+			input: CoGraph{
+				Url: "bruh",
+				Graph: map[string][]string{
+					"term":      {"term", "frequency"},
+					"frequency": {"term", "frequency", "inverse", "document", "frequency"},
+					"inverse":   {"inverse", "document", "frequency"},
+					"document":  {"inverse", "document", "frequency"},
+					"tfidf":     {"tfidf"},
+				},
+			},
+			expected: WordScores{
+				Url: "bruh",
+				Scores: map[string]float64{
+					"term": 2.0,
+					"frequency": 2.5,
+					"inverse": 3.0,
+					"document": 3.0,
+					"tfidf": 1.0,
+				},
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			result := DegFreqCalc(testCase.input)
+			if comp := reflect.DeepEqual(result.Scores, testCase.expected.Scores); !comp {
+				t.Errorf("%s failed, %v != %v", testCase.name, result.Scores, testCase.expected)
 			}
 		})
 	}

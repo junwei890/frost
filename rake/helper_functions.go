@@ -118,3 +118,26 @@ func CoOccurence(doc ProcessedText) CoGraph {
 		Graph: wordMap,
 	}
 }
+
+type WordScores struct {
+	Url    string
+	Scores map[string]float64
+}
+
+func DegFreqCalc(graph CoGraph) WordScores { // word scores are calculated by dividing the degree of a word by its frequency
+	scores := make(map[string]float64)
+	for key, value := range graph.Graph {
+		degree := float64(len(value)) // metric that favors words that occur often as well as within phrases
+		freq := 0.0                   // metric that favors words which occur frequently regardless of words which they co-occur with
+		for _, word := range value {
+			if key == word {
+				freq += 1.0
+			}
+		}
+		scores[key] = degree / freq
+	}
+	return WordScores{
+		Url:    graph.Url,
+		Scores: scores,
+	}
+}
