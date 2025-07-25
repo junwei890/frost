@@ -38,11 +38,11 @@ func InitiateCrawl(baseURL string) ([]server.CrawlerRes, error) {
 		wg:        &sync.WaitGroup{},
 		control:   make(chan struct{}, 5),
 		maxVisits: 20,
-	}
+	} // isolating go routines to a function call so my server can handle multiple requests
 
 	local.wg.Add(1)
 	go local.crawlPage(baseURL)
-	local.wg.Wait()
+	local.wg.Wait() // blocks till workers are done
 
 	res := []server.CrawlerRes{}
 	for key, value := range local.metadata {
@@ -69,13 +69,13 @@ func (c *config) dataFromHTML(normCurrURL, htmlBody string) error {
 		links: []string{},
 	}
 
-	for n := range htmlTree.Descendants() {
+	for n := range htmlTree.Descendants() { // traversing parsed html tree and obtaining links and text between paragraph tags
 		if n.Type == html.ElementNode && n.DataAtom == atom.A {
 			for _, attr := range n.Attr {
 				if attr.Key == "href" {
 					if urlStruct, err := url.Parse(attr.Val); err != nil {
 						return err
-					} else if urlStruct.Hostname() == "" {
+					} else if urlStruct.Hostname() == "" { // in case the link is just a subpath
 						urlData.links = append(urlData.links, c.domain.ResolveReference(urlStruct).String())
 						continue
 					}
@@ -86,7 +86,7 @@ func (c *config) dataFromHTML(normCurrURL, htmlBody string) error {
 		if n.Type == html.ElementNode && n.DataAtom == atom.P {
 			for c := n.FirstChild; c != nil; c = c.NextSibling {
 				if c.Type == html.TextNode {
-					re, err := regexp.Compile(`[^a-zA-Z0-9\s]`)
+					re, err := regexp.Compile(`[^a-zA-Z0-9\s]`) // leaving only letters, numbers and spaces
 					if err != nil {
 						return err
 					}
@@ -100,7 +100,7 @@ func (c *config) dataFromHTML(normCurrURL, htmlBody string) error {
 	return nil
 }
 
-func (c *config) urlVisited(normCurrURL string) bool {
+func (c *config) urlVisited(normCurrURL string) bool { // checking if site has been visited
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -111,7 +111,7 @@ func (c *config) urlVisited(normCurrURL string) bool {
 	return false
 }
 
-func (c *config) maxReached() bool {
+func (c *config) maxReached() bool { // checking if I have visited the maximum number of sites
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -122,7 +122,7 @@ func (c *config) maxReached() bool {
 }
 
 func (c *config) crawlPage(rawCurrURL string) {
-	c.control <- struct{}{}
+	c.control <- struct{}{} // adding a worker
 	defer func() {
 		<-c.control
 		c.wg.Done()
@@ -135,7 +135,7 @@ func (c *config) crawlPage(rawCurrURL string) {
 	if err != nil {
 		return
 	}
-	if c.domain.Hostname() != currStruct.Hostname() {
+	if c.domain.Hostname() != currStruct.Hostname() { // only visiting within the given domain
 		return
 	}
 	normCurrURL, err := normalizeURL(rawCurrURL)

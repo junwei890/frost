@@ -40,16 +40,16 @@ func TextProcessing(doc server.CrawlerRes) ProcessedText {
 	cleanedDoc := []string{}
 	for i, word := range doc.Doc {
 		if _, ok := delimiters[word]; ok {
-			termSlice := slices.DeleteFunc(doc.Doc[curr:i], func(word string) bool {
+			termSlice := slices.DeleteFunc(doc.Doc[curr:i], func(word string) bool { // delimiting at stop words
 				_, ok := delimiters[word]
 				return ok
 			})
 			term := strings.Join(termSlice, " ")
-			if strings.TrimSpace(term) != "" {
+			if strings.TrimSpace(term) != "" { // dealing with 2 or more consecutive stop words
 				cleanedDoc = append(cleanedDoc, strings.TrimSpace(term))
 				curr = i + 1
 			}
-		} else if i == (len(doc.Doc) - 1) {
+		} else if i == (len(doc.Doc) - 1) { // dealing with a potential last phrase or term at the last index
 			term := strings.Join(doc.Doc[curr:i+1], " ")
 			if strings.TrimSpace(term) == "" {
 				continue
@@ -70,7 +70,7 @@ type CoGraph struct {
 
 func CoOccurence(doc ProcessedText) CoGraph {
 	wordMap := make(map[string][]string)
-	for _, term := range doc.Delimited {
+	for _, term := range doc.Delimited { // creating a map of unique words
 		if len(strings.Fields(term)) > 1 {
 			for word := range strings.FieldsSeq(term) {
 				if _, ok := wordMap[word]; !ok {
@@ -82,7 +82,7 @@ func CoOccurence(doc ProcessedText) CoGraph {
 		}
 	}
 
-	for _, term := range doc.Delimited {
+	for _, term := range doc.Delimited { // filling in co-occurrence graph
 		if len(strings.Fields(term)) > 1 {
 			phrase := strings.Fields(term)
 			track := make(map[string]int)
@@ -90,17 +90,17 @@ func CoOccurence(doc ProcessedText) CoGraph {
 			for _, word := range phrase {
 				if _, ok := track[word]; !ok {
 					track[word] = 1
-					set = append(set, word)
+					set = append(set, word) // creating a set for the phrase
 				} else {
-					track[word]++
+					track[word]++ // how many of a word is in a phrase
 				}
 			}
 			for key, value := range track {
 				if value == 1 {
-					wordMap[key] = slices.Concat(wordMap[key], set)
+					wordMap[key] = slices.Concat(wordMap[key], set) // words cannot co-occur twice with another word in the same phrase
 				} else {
 					for range value {
-						wordMap[key] = append(wordMap[key], key)
+						wordMap[key] = append(wordMap[key], key) // words cannot co-occur with themselves if there are more than one of them in the phrase
 					}
 					for _, word := range set {
 						if key != word {
@@ -110,7 +110,7 @@ func CoOccurence(doc ProcessedText) CoGraph {
 				}
 			}
 		} else {
-			wordMap[term] = append(wordMap[term], term)
+			wordMap[term] = append(wordMap[term], term) // single words have their presence accounted
 		}
 	}
 	return CoGraph{
