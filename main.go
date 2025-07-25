@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/junwei890/rumbling/crawler"
-	"github.com/junwei890/rumbling/rake"
 )
 
 func main() {
@@ -25,10 +24,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	tfidfRes := rake.TfidfCalc(res)
-	cleanedDoc := rake.StopWordRm(tfidfRes)
-	for _, doc := range cleanedDoc {
-		log.Println(doc.Url)
-		log.Println(doc.Words)
+	for _, crawl := range res {
+		log.Println(crawl.URL)
+		log.Println(crawl.Doc)
 	}
 }

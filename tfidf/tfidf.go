@@ -1,4 +1,4 @@
-package rake
+package tfidf
 
 import (
 	"math"
@@ -22,12 +22,12 @@ type Tfidf struct {
 	TfidfScores map[string]float64
 }
 
-func TfidfCalc(corpus []server.CrawlerRes) []Tfidf {
+func TfidfCalc(corpus []server.RakeRes) []Tfidf {
 	agged := []agg{}
 	for _, doc := range corpus {
 		wordsInDoc := 0
 		freqInDoc := make(map[string]int)
-		for _, word := range doc.Doc {
+		for _, word := range doc.Keywords {
 			wordsInDoc++
 			if _, ok := freqInDoc[string(word)]; ok {
 				freqInDoc[string(word)]++
@@ -74,54 +74,4 @@ func TfidfCalc(corpus []server.CrawlerRes) []Tfidf {
 	}
 
 	return TFIDFScores
-}
-
-type rawStats struct {
-	url          string
-	totalTFIDF   float64
-	observations int
-	tfidfScores  map[string]float64
-}
-
-type Cleaned struct {
-	Url   string
-	Words []string
-}
-
-func StopWordRm(corpus []Tfidf) []Cleaned {
-	tfidfStats := []rawStats{}
-	for _, doc := range corpus {
-		statsPerDoc := rawStats{
-			url:          doc.Url,
-			totalTFIDF:   0.0,
-			observations: 0,
-			tfidfScores:  doc.TfidfScores,
-		}
-		for _, value := range doc.TfidfScores {
-			statsPerDoc.totalTFIDF += value
-			statsPerDoc.observations++
-		}
-		tfidfStats = append(tfidfStats, statsPerDoc)
-	}
-
-	cleanedDocs := []Cleaned{}
-	for _, stats := range tfidfStats {
-		cleanedDoc := Cleaned{
-			Url:   stats.url,
-			Words: []string{},
-		}
-		summation := 0.0
-		for _, value := range stats.tfidfScores {
-			summation += math.Pow((value - (stats.totalTFIDF / float64(stats.observations))), 2.0)
-		}
-		sd := math.Sqrt(summation / float64(stats.observations-1))
-		for key, value := range stats.tfidfScores {
-			if value < ((stats.totalTFIDF / float64(stats.observations)) - (0.7 * sd)) {
-				cleanedDoc.Words = append(cleanedDoc.Words, key)
-			}
-		}
-		cleanedDocs = append(cleanedDocs, cleanedDoc)
-	}
-
-	return cleanedDocs
 }

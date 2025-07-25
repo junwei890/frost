@@ -51,7 +51,7 @@ func InitiateCrawl(baseURL string) ([]server.CrawlerRes, error) {
 		}
 		res = append(res, server.CrawlerRes{
 			URL: key,
-			Doc: strings.Fields(strings.Join(value.text, " ")),
+			Doc: strings.Join(value.text, " "),
 		})
 	}
 	return res, nil
@@ -87,16 +87,11 @@ func (c *config) dataFromHTML(normCurrURL, htmlBody string) error {
 		if n.Type == html.ElementNode && (n.DataAtom == atom.P || n.DataAtom == atom.H1 || n.DataAtom == atom.Title) {
 			for c := n.FirstChild; c != nil; c = c.NextSibling {
 				if c.Type == html.TextNode {
-					re, err := regexp.Compile(`[[:punct:]]`)
+					re, err := regexp.Compile(`[^\p{L}\p{N} !?.,]+`)
 					if err != nil {
 						return err
 					}
-					re1, err := regexp.Compile(`[^\p{L}\p{N} ]+`)
-					if err != nil {
-						return err
-					}
-					semiClean := re.ReplaceAllString(strings.ToLower(c.Data), "")
-					clean := re1.ReplaceAllString(semiClean, "")
+					clean := strings.Trim(re.ReplaceAllString(strings.ToLower(c.Data), ""), " ")
 					urlData.text = append(urlData.text, clean)
 				}
 			}
