@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func getHTML(rawURL string) (string, error) {
+func getHTML(rawURL string) (string, error) { // getting html, errors under certain conditions so I don't waste time parsing the response
 	client := &http.Client{}
 	res, err := client.Get(rawURL)
 	if err != nil {
@@ -20,8 +20,7 @@ func getHTML(rawURL string) (string, error) {
 		return "", errors.New("dead link")
 	} else if 400 <= res.StatusCode && res.StatusCode < 500 {
 		return "", errors.New("client error")
-	}
-	if header := res.Header.Get("Content-Type"); !strings.Contains(header, "text/html") {
+	} else if header := res.Header.Get("Content-Type"); !strings.Contains(header, "text/html") {
 		return "", errors.New("content type not html")
 	}
 
@@ -32,7 +31,7 @@ func getHTML(rawURL string) (string, error) {
 	return string(resData), nil
 }
 
-func normalizeURL(rawURL string) (string, error) {
+func normalizeURL(rawURL string) (string, error) { // urls of the same are reduced to their base form
 	urlStruct, err := url.Parse(rawURL)
 	if err != nil {
 		return "", err

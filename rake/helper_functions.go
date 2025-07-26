@@ -8,7 +8,7 @@ import (
 	"github.com/junwei890/rumbling/server"
 )
 
-var delimiters = map[string]struct{}{
+var stopwords = map[string]struct{}{
 	"i": {}, "im": {}, "ive": {}, "ill": {}, "id": {}, "me": {}, "my": {}, "myself": {}, "we": {}, "wed": {},
 	"were": {}, "weve": {}, "our": {}, "ours": {}, "ourselves": {}, "you": {}, "youre": {}, "youve": {},
 	"youll": {}, "youd": {}, "your": {}, "yours": {}, "yourself": {}, "yourselves": {}, "he": {}, "hed": {},
@@ -31,36 +31,72 @@ var delimiters = map[string]struct{}{
 	"theres": {}, "wouldve": {}, "couldve": {}, "shouldve": {}, "s": {}, "t": {}, "don": {}, "now": {},
 }
 
+var punct = map[string]struct{}{
+	".": {}, ",": {}, "?": {}, "!": {},
+}
+
 type ProcessedText struct {
 	Url       string
 	Delimited []string
 }
 
-func TextProcessing(doc server.CrawlerRes) ProcessedText { // can't error here, testing for functionality
-	curr := 0
-	cleanedDoc := []string{}
-	for i, word := range doc.Doc {
-		if _, ok := delimiters[word]; ok {
-			termSlice := slices.DeleteFunc(doc.Doc[curr:i], func(word string) bool { // delimiting at stop words
-				_, ok := delimiters[word]
-				return ok
-			})
-			term := strings.Join(termSlice, " ")
-			if strings.TrimSpace(term) != "" { // dealing with 2 or more consecutive stop words
-				cleanedDoc = append(cleanedDoc, strings.TrimSpace(term))
-				curr = i + 1
+func DelimitByPunct(res server.CrawlerRes) (ProcessedText, error) { // delimiting by punctuation to find sentences
+	if strings.TrimSpace(res.Doc) == "" {
+		return ProcessedText{}, errors.New("unprocessed input")
+	}
+	delimited := strings.FieldsFunc(res.Doc, func(w rune) bool {
+		_, ok := punct[string(w)]
+		return ok
+	})
+
+	cleanSlice := []string{}
+	for _, sent := range delimited {
+		cleaned := strings.TrimSpace(sent)
+		if cleaned != "" && len(cleaned) > 1 { // filtering out letters and empty space
+			cleanSlice = append(cleanSlice, cleaned)
+		}
+	}
+
+	return ProcessedText{
+		Url:       res.URL,
+		Delimited: cleanSlice,
+	}, nil
+}
+
+func DelimitByStop(doc ProcessedText) (ProcessedText, error) { // delimiting by stop words to find phrases
+	terms := []string{}
+	for _, sent := range doc.Delimited {
+		if len(strings.Fields(sent)) > 1 {
+			words := strings.Fields(sent)
+			curr := 0
+			for i, word := range words {
+				if _, ok := stopwords[word]; ok {
+					phrase := strings.Join(slices.DeleteFunc(words[curr:i], func(w string) bool {
+						_, ok := stopwords[w]
+						return ok
+					}), " ") // dealing with stop words, then joining up the rest to form a phrase
+					clean := strings.TrimSpace(phrase)
+					if clean != "" {
+						terms = append(terms, clean) // case for back to back stop words
+					}
+					curr = i + 1
+				} else if i == len(words)-1 {
+					phrase := strings.TrimSpace(strings.Join(words[curr:i+1], " ")) // dealing with the phrase after the last stop word
+					terms = append(terms, phrase)
+				}
 			}
-		} else if i == (len(doc.Doc) - 1) { // dealing with a potential last phrase or term at the last index
-			term := strings.Join(doc.Doc[curr:i+1], " ")
-			if strings.TrimSpace(term) != "" {
-				cleanedDoc = append(cleanedDoc, strings.TrimSpace(term))
+		} else if len(strings.Fields(sent)) == 1 { // appending single words if they aren't stop words
+			if _, ok := stopwords[sent]; !ok {
+				terms = append(terms, sent)
 			}
+		} else {
+			return ProcessedText{}, errors.New("unprocessed input")
 		}
 	}
 	return ProcessedText{
-		Url:       doc.URL,
-		Delimited: cleanedDoc,
-	}
+		Url:       doc.Url,
+		Delimited: terms,
+	}, nil
 }
 
 type CoGraph struct {
@@ -68,7 +104,7 @@ type CoGraph struct {
 	Graph map[string][]string
 }
 
-func CoOccurence(doc ProcessedText) CoGraph { // can't error here, testing for functionality
+func CoOccurrence(doc ProcessedText) (CoGraph, error) { // a co-occurrence graph is a matrice that shows the frequency of a word's occurrence and co-occurrence with other words
 	wordMap := make(map[string][]string)
 	for _, term := range doc.Delimited { // creating a map of unique words
 		if len(strings.Fields(term)) > 1 {
@@ -81,6 +117,8 @@ func CoOccurence(doc ProcessedText) CoGraph { // can't error here, testing for f
 			if _, ok := wordMap[term]; !ok {
 				wordMap[term] = []string{}
 			}
+		} else {
+			return CoGraph{}, errors.New("unprocessed input")
 		}
 	}
 
@@ -118,7 +156,7 @@ func CoOccurence(doc ProcessedText) CoGraph { // can't error here, testing for f
 	return CoGraph{
 		Url:   doc.Url,
 		Graph: wordMap,
-	}
+	}, nil
 }
 
 type WordScores struct {

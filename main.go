@@ -24,17 +24,29 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	for _, res := range res {
-		doc := rake.TextProcessing(res)
-		graph := rake.CoOccurence(doc)
-		scores, err := rake.DegFreqCalc(graph)
+	for _, doc := range res {
+		noPunct, err := rake.DelimitByPunct(doc)
 		if err != nil {
 			log.Fatal(err)
 		}
-		termscores, err := rake.TermScoring(scores, doc)
-		for key, value := range termscores.Scores {
-			log.Printf("%s: %.2f", key, value)
+		cleaned, err := rake.DelimitByStop(noPunct)
+		if err != err {
+			log.Fatal(err)
+		}
+		coGraph, err := rake.CoOccurrence(cleaned)
+		if err != nil {
+			log.Fatal(err)
+		}
+		wordScores, err := rake.DegFreqCalc(coGraph)
+		if err != nil {
+			log.Fatal(err)
+		}
+		termScores, err := rake.TermScoring(wordScores, cleaned)
+		if err != nil {
+			log.Fatal(err)
+		}
+		for key, value := range termScores.Scores {
+			log.Printf("%s: %.3f", key, value)
 		}
 	}
 }

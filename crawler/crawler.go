@@ -47,10 +47,13 @@ func InitiateCrawl(baseURL string) ([]server.CrawlerRes, error) {
 	res := []server.CrawlerRes{}
 	for key, value := range local.metadata {
 		if value.text != nil {
+			clean := strings.TrimSpace(strings.Join(value.text, " "))
+			if clean != "" {
 			res = append(res, server.CrawlerRes{
 				URL: key,
-				Doc: strings.Fields(strings.Join(value.text, " ")),
+				Doc: clean,
 			})
+			}
 		}
 	}
 	return res, nil
@@ -86,12 +89,14 @@ func (c *config) dataFromHTML(normCurrURL, htmlBody string) error {
 		if n.Type == html.ElementNode && n.DataAtom == atom.P {
 			for c := n.FirstChild; c != nil; c = c.NextSibling {
 				if c.Type == html.TextNode {
-					re, err := regexp.Compile(`[^a-zA-Z0-9\s]`) // leaving only letters, numbers and spaces
+					re, err := regexp.Compile(`[^a-zA-Z0-9 .,!?]+`) // leaving only letters, numbers and spaces
 					if err != nil {
 						return err
 					}
 					clean := strings.TrimSpace(re.ReplaceAllString(strings.ToLower(c.Data), ""))
-					urlData.text = append(urlData.text, clean)
+					if clean != "" {
+						urlData.text = append(urlData.text, clean)
+					}
 				}
 			}
 		}
@@ -138,7 +143,7 @@ func (c *config) crawlPage(rawCurrURL string) {
 	if c.domain.Hostname() != currStruct.Hostname() { // only visiting within the given domain
 		return
 	}
-	normCurrURL, err := normalizeURL(rawCurrURL)
+	normCurrURL, err := normalizeURL(rawCurrURL) // normalizing urls so I don't visit the same site twice
 	if err != nil {
 		return
 	}

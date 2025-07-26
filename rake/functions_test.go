@@ -7,106 +7,168 @@ import (
 	"github.com/junwei890/rumbling/server"
 )
 
-func TestTextProcessing(t *testing.T) {
+func TestDelimitByPunct(t *testing.T) {
 	testCases := []struct {
-		name     string
-		input    server.CrawlerRes
-		expected ProcessedText
+		name         string
+		input        server.CrawlerRes
+		expected     ProcessedText
+		errorPresent bool
 	}{
 		{
 			name: "test case 1",
 			input: server.CrawlerRes{
 				URL: "bruh",
-				Doc: []string{"i", "love", "pizza", "and", "hamburgers"},
+				Doc: "good morning, nice weather today!",
 			},
 			expected: ProcessedText{
 				Url:       "bruh",
-				Delimited: []string{"love pizza", "hamburgers"},
+				Delimited: []string{"good morning", "nice weather today"},
 			},
+			errorPresent: false,
 		},
 		{
 			name: "test case 2",
 			input: server.CrawlerRes{
 				URL: "bruh",
-				Doc: []string{"i", "need", "wingstop", "again"},
+				Doc: "U.S.A, wingstop, basketball?",
 			},
 			expected: ProcessedText{
 				Url:       "bruh",
-				Delimited: []string{"need wingstop"},
+				Delimited: []string{"wingstop", "basketball"},
 			},
+			errorPresent: false,
 		},
 		{
 			name: "test case 3",
 			input: server.CrawlerRes{
 				URL: "bruh",
-				Doc: []string{"i", "i", "i", "i", "i"},
+				Doc: ",.!?,,..??!!bruh??!!.,",
 			},
 			expected: ProcessedText{
 				Url:       "bruh",
-				Delimited: []string{},
+				Delimited: []string{"bruh"},
 			},
+			errorPresent: false,
 		},
 		{
 			name: "test case 4",
 			input: server.CrawlerRes{
 				URL: "bruh",
-				Doc: []string{"hello", "nice", "meeting", "you", "again"},
-			},
-			expected: ProcessedText{
-				Url:       "bruh",
-				Delimited: []string{"hello nice meeting"},
-			},
-		},
-		{
-			name: "test case 5",
-			input: server.CrawlerRes{
-				URL: "bruh",
-				Doc: []string{"i", "i", "hello", "i", "i", "hi", "i"},
-			},
-			expected: ProcessedText{
-				Url:       "bruh",
-				Delimited: []string{"hello", "hi"},
-			},
-		},
-		{
-			name: "test case 6",
-			input: server.CrawlerRes{
-				URL: "bruh",
-				Doc: []string{"hello", "good", "morning", "wonderful", "day"},
-			},
-			expected: ProcessedText{
-				Url:       "bruh",
-				Delimited: []string{"hello good morning wonderful day"},
-			},
-		},
-		{
-			name: "test case 7",
-			input: server.CrawlerRes{
-				URL: "bruh",
-				Doc: []string{},
+				Doc: ".,?!",
 			},
 			expected: ProcessedText{
 				Url:       "bruh",
 				Delimited: []string{},
 			},
+			errorPresent: false,
+		},
+		{
+			name: "test case 5",
+			input: server.CrawlerRes{
+				URL: "bruh",
+				Doc: "	",
+			},
+			expected:     ProcessedText{},
+			errorPresent: true,
 		},
 	}
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			output := TextProcessing(testCase.input)
-			if comp := reflect.DeepEqual(output, testCase.expected); !comp {
-				t.Errorf("%s failed, %v != %v", testCase.name, output.Delimited, testCase.expected.Delimited)
+			result, err := DelimitByPunct(testCase.input)
+			if (err != nil) != testCase.errorPresent {
+				t.Errorf("%s failed, expecting err = %v", testCase.name, err)
+			} else if comp := reflect.DeepEqual(result, testCase.expected); !comp {
+				t.Errorf("%s failed, %v != %v", testCase.name, result, testCase.expected)
 			}
 		})
 	}
 }
 
-func TestCoOccurence(t *testing.T) {
+func TestDelimitByStop(t *testing.T) {
 	testCases := []struct {
-		name     string
-		input    ProcessedText
-		expected CoGraph
+		name         string
+		input        ProcessedText
+		expected     ProcessedText
+		errorPresent bool
+	}{
+		{
+			name: "test case 1",
+			input: ProcessedText{
+				Url:       "bruh",
+				Delimited: []string{"and", "and and", "hello and hi", "and hello", "hi and"},
+			},
+			expected: ProcessedText{
+				Url:       "bruh",
+				Delimited: []string{"hello", "hi", "hello", "hi"},
+			},
+			errorPresent: false,
+		},
+		{
+			name: "test case 2",
+			input: ProcessedText{
+				Url:       "bruh",
+				Delimited: []string{"hello hi and hamburgers", "wingstop and fries", "and and fish"},
+			},
+			expected: ProcessedText{
+				Url:       "bruh",
+				Delimited: []string{"hello hi", "hamburgers", "wingstop", "fries", "fish"},
+			},
+			errorPresent: false,
+		},
+		{
+			name: "test case 3",
+			input: ProcessedText{
+				Url:       "bruh",
+				Delimited: []string{"and and wow and and", "wow and wow", "and and and and and"},
+			},
+			expected: ProcessedText{
+				Url:       "bruh",
+				Delimited: []string{"wow", "wow", "wow"},
+			},
+			errorPresent: false,
+		},
+		{
+			name: "test case 4",
+			input: ProcessedText{
+				Url:       "bruh",
+				Delimited: []string{"hamburgers and crisscut fries", "lemon pepper and lychee"},
+			},
+			expected: ProcessedText{
+				Url:       "bruh",
+				Delimited: []string{"hamburgers", "crisscut fries", "lemon pepper", "lychee"},
+			},
+			errorPresent: false,
+		},
+		{
+			name: "test case 5",
+			input: ProcessedText{
+				Url:       "bruh",
+				Delimited: []string{"	"},
+			},
+			expected:     ProcessedText{},
+			errorPresent: true,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			result, err := DelimitByStop(testCase.input)
+			if (err != nil) != testCase.errorPresent {
+				t.Errorf("%s failed, expected err = %v", testCase.name, err)
+			} else if comp := reflect.DeepEqual(result, testCase.expected); !comp {
+				t.Errorf("%s failed, %v != %v", testCase.name, result, testCase.expected)
+			}
+		})
+	}
+}
+
+func TestCoOccurrence(t *testing.T) {
+	testCases := []struct {
+		name         string
+		input        ProcessedText
+		expected     CoGraph
+		errorPresent bool
 	}{
 		{
 			name: "test case 1",
@@ -126,6 +188,7 @@ func TestCoOccurence(t *testing.T) {
 					"notation":   {"scientific", "notation"},
 				},
 			},
+			errorPresent: false,
 		},
 		{
 			name: "test case 2",
@@ -144,6 +207,7 @@ func TestCoOccurence(t *testing.T) {
 					"ai":     {"ai"},
 				},
 			},
+			errorPresent: false,
 		},
 		{
 			name: "test case 3",
@@ -159,6 +223,7 @@ func TestCoOccurence(t *testing.T) {
 					"wingstop": {"wingstop", "wingstop", "wingstop", "wingstop"},
 				},
 			},
+			errorPresent: false,
 		},
 		{
 			name: "test case 4",
@@ -178,6 +243,7 @@ func TestCoOccurence(t *testing.T) {
 					"tfidf":     {"tfidf"},
 				},
 			},
+			errorPresent: false,
 		},
 		{
 			name: "test case 5",
@@ -197,6 +263,7 @@ func TestCoOccurence(t *testing.T) {
 					"sign":       {"stop", "sign"},
 				},
 			},
+			errorPresent: false,
 		},
 		{
 			name: "test case 6",
@@ -213,6 +280,7 @@ func TestCoOccurence(t *testing.T) {
 					"bruh":     {"wingstop", "bruh"},
 				},
 			},
+			errorPresent: false,
 		},
 		{
 			name: "test case 7",
@@ -229,6 +297,7 @@ func TestCoOccurence(t *testing.T) {
 					"bruh":     {"wingstop", "bruh", "bruh", "wingstop", "wingstop", "bruh"},
 				},
 			},
+			errorPresent: false,
 		},
 		{
 			name: "test case 8",
@@ -245,14 +314,17 @@ func TestCoOccurence(t *testing.T) {
 					"hello": {"hello", "hello", "hi", "hello"},
 				},
 			},
+			errorPresent: false,
 		},
 	}
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			result := CoOccurence(testCase.input)
-			if comp := reflect.DeepEqual(result, testCase.expected); !comp {
-				t.Errorf("%s failed, %v != %v", testCase.name, result.Graph, testCase.expected.Graph)
+			result, err := CoOccurrence(testCase.input)
+			if (err != nil) != testCase.errorPresent {
+				t.Errorf("%s failed, expecting err = %v", testCase.name, err)
+			} else if comp := reflect.DeepEqual(result, testCase.expected); !comp {
+				t.Errorf("%s failed, %v != %v", testCase.name, result, testCase.expected)
 			}
 		})
 	}
@@ -366,8 +438,8 @@ func TestDegFreqCalc(t *testing.T) {
 			result, err := DegFreqCalc(testCase.input)
 			if (err != nil) != testCase.errorPresent {
 				t.Errorf("%s failed, expecting err == %v", testCase.name, err)
-			} else if comp := reflect.DeepEqual(result.Scores, testCase.expected.Scores); !comp {
-				t.Errorf("%s failed, %v != %v", testCase.name, result.Scores, testCase.expected)
+			} else if comp := reflect.DeepEqual(result, testCase.expected); !comp {
+				t.Errorf("%s failed, %v != %v", testCase.name, result, testCase.expected)
 			}
 		})
 	}
