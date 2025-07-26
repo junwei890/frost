@@ -49,10 +49,10 @@ func InitiateCrawl(baseURL string) ([]server.CrawlerRes, error) {
 		if value.text != nil {
 			clean := strings.TrimSpace(strings.Join(value.text, " "))
 			if clean != "" {
-			res = append(res, server.CrawlerRes{
-				URL: key,
-				Doc: clean,
-			})
+				res = append(res, server.CrawlerRes{
+					URL: key,
+					Doc: clean,
+				})
 			}
 		}
 	}

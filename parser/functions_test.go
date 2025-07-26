@@ -1,4 +1,4 @@
-package rake
+package parser
 
 import (
 	"reflect"
@@ -552,6 +552,73 @@ func TestTermScoring(t *testing.T) {
 				t.Errorf("%s failed, expecting err == %v", testCase.name, err)
 			} else if comp := reflect.DeepEqual(testCase.expected, result); !comp {
 				t.Errorf("%s failed, %v != %v", testCase.name, testCase.expected, result)
+			}
+		})
+	}
+}
+
+func TestFiltering(t *testing.T) {
+	testCases := []struct{
+		name string
+		input TermScores
+		expected Keywords
+	}{
+		{
+			name: "test case 1",
+			input: TermScores{
+				Url: "bruh",
+				Scores: map[string]float64{
+					"wingstop good": 5.0,
+					"monday tuesday": 1.5,
+					"wow": 6.0,
+					"terrific": 4.5,
+					"awesome job": 3.0,
+					"hello": 4.0,
+				},
+			},
+			expected: Keywords{
+				Url: "bruh",
+				Keywords: []string{"wow", "wingstop good", "terrific"},
+			},
+		},
+		{
+			name: "test case 2",
+			input: TermScores{
+				Url: "bruh",
+				Scores: map[string]float64{
+					"hello world": 4.5,
+					"npm install": 3.4,
+					"hello": 3.2,
+					"good day": 1.5,
+				},
+			},
+			expected: Keywords{
+				Url: "bruh",
+				Keywords: []string{"hello world", "npm install"},
+			},
+		},
+		{
+			name: "test case 3",
+			input: TermScores{
+				Url: "bruh",
+				Scores: map[string]float64{
+					"hello world": 4.5,
+					"golang": 3.0,
+					"wingstop": 2.0,
+				},
+			},
+			expected: Keywords{
+				Url: "bruh",
+				Keywords: []string{"hello world", "golang", "wingstop"},
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			result := Filtering(testCase.input)
+			if comp := reflect.DeepEqual(result, testCase.expected); !comp {
+				t.Errorf("%s failed, %v != %v", testCase.name, result, testCase.expected)
 			}
 		})
 	}

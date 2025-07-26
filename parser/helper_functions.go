@@ -1,8 +1,9 @@
-package rake
+package parser
 
 import (
 	"errors"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/junwei890/rumbling/server"
@@ -230,4 +231,34 @@ func TermScoring(scores WordScores, terms ProcessedText) (TermScores, error) { /
 		Url:    scores.Url,
 		Scores: termScores,
 	}, nil
+}
+
+type Keywords struct {
+	Url      string
+	Keywords []string
+}
+
+func Filtering(scores TermScores) Keywords { // according to the paper, we take the top 33% highest scoring terms
+	keys := []string{}
+	if len(scores.Scores) <= 3 { // returning all keywords if there are only a few
+		for key := range scores.Scores {
+			keys = append(keys, key)
+		}
+		return Keywords{
+			Url:      scores.Url,
+			Keywords: keys,
+		}
+	}
+	for key := range scores.Scores {
+		keys = append(keys, key)
+	}
+	sort.SliceStable(keys, func(i, j int) bool { // sorting the slice of keys corresponding to their value in the map
+		return scores.Scores[keys[i]] > scores.Scores[keys[j]]
+	})
+
+	taking := len(scores.Scores) / 3
+	return Keywords{
+		Url:      scores.Url,
+		Keywords: keys[0 : taking+1],
+	}
 }

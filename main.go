@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/junwei890/rumbling/crawler"
-	"github.com/junwei890/rumbling/rake"
+	"github.com/junwei890/rumbling/parser"
 )
 
 func main() {
@@ -25,28 +25,29 @@ func main() {
 		log.Fatal(err)
 	}
 	for _, doc := range res {
-		noPunct, err := rake.DelimitByPunct(doc)
+		noPunct, err := parser.DelimitByPunct(doc)
 		if err != nil {
 			log.Fatal(err)
 		}
-		cleaned, err := rake.DelimitByStop(noPunct)
+		cleaned, err := parser.DelimitByStop(noPunct)
 		if err != err {
 			log.Fatal(err)
 		}
-		coGraph, err := rake.CoOccurrence(cleaned)
+		coGraph, err := parser.CoOccurrence(cleaned)
 		if err != nil {
 			log.Fatal(err)
 		}
-		wordScores, err := rake.DegFreqCalc(coGraph)
+		wordScores, err := parser.DegFreqCalc(coGraph)
 		if err != nil {
 			log.Fatal(err)
 		}
-		termScores, err := rake.TermScoring(wordScores, cleaned)
+		termScores, err := parser.TermScoring(wordScores, cleaned)
 		if err != nil {
 			log.Fatal(err)
 		}
-		for key, value := range termScores.Scores {
-			log.Printf("%s: %.3f", key, value)
+		filtered := parser.Filtering(termScores)
+		for _, keyword := range filtered.Keywords {
+			log.Println(keyword)
 		}
 	}
 }
