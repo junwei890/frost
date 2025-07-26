@@ -1,6 +1,7 @@
 package rake
 
 import (
+	"errors"
 	"slices"
 	"strings"
 
@@ -35,7 +36,7 @@ type ProcessedText struct {
 	Delimited []string
 }
 
-func TextProcessing(doc server.CrawlerRes) ProcessedText {
+func TextProcessing(doc server.CrawlerRes) ProcessedText { // can't error here, testing for functionality
 	curr := 0
 	cleanedDoc := []string{}
 	for i, word := range doc.Doc {
@@ -51,10 +52,9 @@ func TextProcessing(doc server.CrawlerRes) ProcessedText {
 			}
 		} else if i == (len(doc.Doc) - 1) { // dealing with a potential last phrase or term at the last index
 			term := strings.Join(doc.Doc[curr:i+1], " ")
-			if strings.TrimSpace(term) == "" {
-				continue
+			if strings.TrimSpace(term) != "" {
+				cleanedDoc = append(cleanedDoc, strings.TrimSpace(term))
 			}
-			cleanedDoc = append(cleanedDoc, strings.TrimSpace(term))
 		}
 	}
 	return ProcessedText{
@@ -68,7 +68,7 @@ type CoGraph struct {
 	Graph map[string][]string
 }
 
-func CoOccurence(doc ProcessedText) CoGraph {
+func CoOccurence(doc ProcessedText) CoGraph { // can't error here, testing for functionality
 	wordMap := make(map[string][]string)
 	for _, term := range doc.Delimited { // creating a map of unique words
 		if len(strings.Fields(term)) > 1 {
@@ -77,8 +77,10 @@ func CoOccurence(doc ProcessedText) CoGraph {
 					wordMap[word] = []string{}
 				}
 			}
-		} else if _, ok := wordMap[term]; !ok {
-			wordMap[term] = []string{}
+		} else if len(strings.Fields(term)) == 1 {
+			if _, ok := wordMap[term]; !ok {
+				wordMap[term] = []string{}
+			}
 		}
 	}
 
@@ -109,7 +111,7 @@ func CoOccurence(doc ProcessedText) CoGraph {
 					}
 				}
 			}
-		} else {
+		} else if len(strings.Fields(term)) == 1 {
 			wordMap[term] = append(wordMap[term], term) // single words have their presence accounted
 		}
 	}
@@ -124,20 +126,70 @@ type WordScores struct {
 	Scores map[string]float64
 }
 
-func DegFreqCalc(graph CoGraph) WordScores { // word scores are calculated by dividing the degree of a word by its frequency
+func DegFreqCalc(graph CoGraph) (WordScores, error) { // word scores are calculated by dividing the degree of a word by its frequency
 	scores := make(map[string]float64)
 	for key, value := range graph.Graph {
 		degree := float64(len(value)) // metric that favors words that occur often as well as within phrases
-		freq := 0.0                   // metric that favors words that occur frequently regardless of words which they co-occur with
+		if degree == 0.0 {
+			return WordScores{}, errors.New("malformed co-occurence table")
+		}
+		freq := 0.0 // metric that favors words that occur frequently regardless of words which they co-occur with
 		for _, word := range value {
 			if key == word {
 				freq += 1.0
 			}
+		}
+		if freq == 0.0 {
+			return WordScores{}, errors.New("malformed co-occurence table")
 		}
 		scores[key] = degree / freq
 	}
 	return WordScores{
 		Url:    graph.Url,
 		Scores: scores,
+	}, nil
+}
+
+type TermScores struct {
+	Url    string
+	Scores map[string]float64
+}
+
+func TermScoring(scores WordScores, terms ProcessedText) (TermScores, error) { // adding all individual metric scores up per unique term
+	if scores.Url != terms.Url {
+		return TermScores{}, errors.New("url mismatch")
 	}
+	track := make(map[string]int) // to check if we've scored words that didn't exist previously
+	termScores := make(map[string]float64)
+	for _, term := range terms.Delimited {
+		if len(strings.Fields(term)) > 1 {
+			for word := range strings.FieldsSeq(term) {
+				if _, ok := scores.Scores[word]; ok { // checking if word had been scored
+					if _, ok := track[word]; !ok {
+						track[word] = 1
+					}
+					termScores[term] += scores.Scores[word]
+				} else {
+					return TermScores{}, errors.New("word did not exist during scoring")
+				}
+			}
+		} else {
+			if _, ok := scores.Scores[term]; ok {
+				if _, ok := track[term]; !ok {
+					track[term] = 1
+				}
+				termScores[term] = scores.Scores[term]
+			} else {
+				return TermScores{}, errors.New("word did not exist during scoring")
+			}
+		}
+	}
+	if len(track) != len(scores.Scores) {
+		return TermScores{}, errors.New("some scored words were not used")
+	}
+
+	return TermScores{
+		Url:    scores.Url,
+		Scores: termScores,
+	}, nil
 }

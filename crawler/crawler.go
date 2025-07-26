@@ -77,9 +77,9 @@ func (c *config) dataFromHTML(normCurrURL, htmlBody string) error {
 						return err
 					} else if urlStruct.Hostname() == "" { // in case the link is just a subpath
 						urlData.links = append(urlData.links, c.domain.ResolveReference(urlStruct).String())
-						continue
+					} else {
+						urlData.links = append(urlData.links, attr.Val)
 					}
-					urlData.links = append(urlData.links, attr.Val)
 				}
 			}
 		}

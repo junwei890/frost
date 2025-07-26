@@ -260,9 +260,10 @@ func TestCoOccurence(t *testing.T) {
 
 func TestDegFreqCalc(t *testing.T) {
 	testCases := []struct {
-		name     string
-		input    CoGraph
-		expected WordScores
+		name         string
+		input        CoGraph
+		expected     WordScores
+		errorPresent bool
 	}{
 		{
 			name: "test case 1",
@@ -279,13 +280,14 @@ func TestDegFreqCalc(t *testing.T) {
 			expected: WordScores{
 				Url: "bruh",
 				Scores: map[string]float64{
-					"cloud": 2.0,
-					"bill": 2.0,
-					"sent": 1.0,
+					"cloud":      2.0,
+					"bill":       2.0,
+					"sent":       1.0,
 					"scientific": 2.0,
-					"notation": 2.0,
+					"notation":   2.0,
 				},
 			},
+			errorPresent: false,
 		},
 		{
 			name: "test case 2",
@@ -302,13 +304,14 @@ func TestDegFreqCalc(t *testing.T) {
 			expected: WordScores{
 				Url: "bruh",
 				Scores: map[string]float64{
-					"stop": 2.0,
-					"words": 2.0,
+					"stop":       2.0,
+					"words":      2.0,
 					"delimiters": 1.0,
-					"wing": 2.0,
-					"sign": 2.0,
+					"wing":       2.0,
+					"sign":       2.0,
 				},
 			},
+			errorPresent: false,
 		},
 		{
 			name: "test case 3",
@@ -325,21 +328,158 @@ func TestDegFreqCalc(t *testing.T) {
 			expected: WordScores{
 				Url: "bruh",
 				Scores: map[string]float64{
-					"term": 2.0,
+					"term":      2.0,
 					"frequency": 2.5,
-					"inverse": 3.0,
-					"document": 3.0,
-					"tfidf": 1.0,
+					"inverse":   3.0,
+					"document":  3.0,
+					"tfidf":     1.0,
 				},
 			},
+			errorPresent: false,
+		},
+		{
+			name: "test case 4",
+			input: CoGraph{
+				Url: "bruh",
+				Graph: map[string][]string{
+					"wingstop": {},
+				},
+			},
+			expected:     WordScores{},
+			errorPresent: true,
+		},
+		{
+			name: "test case 5",
+			input: CoGraph{
+				Url: "bruh",
+				Graph: map[string][]string{
+					"neovim": {"btw"},
+				},
+			},
+			expected:     WordScores{},
+			errorPresent: true,
 		},
 	}
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			result := DegFreqCalc(testCase.input)
-			if comp := reflect.DeepEqual(result.Scores, testCase.expected.Scores); !comp {
+			result, err := DegFreqCalc(testCase.input)
+			if (err != nil) != testCase.errorPresent {
+				t.Errorf("%s failed, expecting err == %v", testCase.name, err)
+			} else if comp := reflect.DeepEqual(result.Scores, testCase.expected.Scores); !comp {
 				t.Errorf("%s failed, %v != %v", testCase.name, result.Scores, testCase.expected)
+			}
+		})
+	}
+}
+
+func TestTermScoring(t *testing.T) {
+	testCases := []struct {
+		name         string
+		score        WordScores
+		terms        ProcessedText
+		expected     TermScores
+		errorPresent bool
+	}{
+		{
+			name: "test case 1",
+			score: WordScores{
+				Url:    "bruh",
+				Scores: make(map[string]float64),
+			},
+			terms: ProcessedText{
+				Url:       "bruhs",
+				Delimited: []string{},
+			},
+			expected:     TermScores{},
+			errorPresent: true,
+		},
+		{
+			name: "test case 2",
+			score: WordScores{
+				Url: "bruh",
+				Scores: map[string]float64{
+					"hello": 2.0,
+					"hi":    1.5,
+					"bye":   3.0,
+				},
+			},
+			terms: ProcessedText{
+				Url:       "bruh",
+				Delimited: []string{"hello hi bye", "hamburgers"},
+			},
+			expected:     TermScores{},
+			errorPresent: true,
+		},
+		{
+			name: "test case 3",
+			score: WordScores{
+				Url: "bruh",
+				Scores: map[string]float64{
+					"hello": 3.0,
+					"hi":    1.5,
+					"bye":   2.0,
+				},
+			},
+			terms: ProcessedText{
+				Url:       "bruh",
+				Delimited: []string{"hello and hi", "bye"},
+			},
+			expected:     TermScores{},
+			errorPresent: true,
+		},
+		{
+			name: "test case 4",
+			score: WordScores{
+				Url: "bruh",
+				Scores: map[string]float64{
+					"hello": 3.0,
+					"hi":    1.5,
+					"bye":   2.0,
+				},
+			},
+			terms: ProcessedText{
+				Url:       "bruh",
+				Delimited: []string{"hello hi"},
+			},
+			expected:     TermScores{},
+			errorPresent: true,
+		},
+		{
+			name: "test case 5",
+			score: WordScores{
+				Url: "bruh",
+				Scores: map[string]float64{
+					"buy":      3.4,
+					"wingstop": 1.4,
+					"today":    2.4,
+				},
+			},
+			terms: ProcessedText{
+				Url:       "bruh",
+				Delimited: []string{"buy", "wingstop today", "buy wingstop today", "buy today", "buy wingstop"},
+			},
+			expected: TermScores{
+				Url: "bruh",
+				Scores: map[string]float64{
+					"buy":                3.4,
+					"wingstop today":     3.8,
+					"buy wingstop today": 7.199999999999999,
+					"buy today":          5.8,
+					"buy wingstop":       4.8,
+				},
+			},
+			errorPresent: false,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			result, err := TermScoring(testCase.score, testCase.terms)
+			if (err != nil) != testCase.errorPresent {
+				t.Errorf("%s failed, expecting err == %v", testCase.name, err)
+			} else if comp := reflect.DeepEqual(testCase.expected, result); !comp {
+				t.Errorf("%s failed, %v != %v", testCase.name, testCase.expected, result)
 			}
 		})
 	}

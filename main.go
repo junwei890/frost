@@ -28,9 +28,13 @@ func main() {
 	for _, res := range res {
 		doc := rake.TextProcessing(res)
 		graph := rake.CoOccurence(doc)
-		scores := rake.DegFreqCalc(graph)
-		for key, value := range scores.Scores {
-			log.Printf("%s: %v", key, value)
+		scores, err := rake.DegFreqCalc(graph)
+		if err != nil {
+			log.Fatal(err)
+		}
+		termscores, err := rake.TermScoring(scores, doc)
+		for key, value := range termscores.Scores {
+			log.Printf("%s: %.2f", key, value)
 		}
 	}
 }
