@@ -37,7 +37,7 @@ func (c *apiConfig) postData(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		errorResponseWriter(w, http.StatusBadRequest, err)
 	}
-	config := &crawlerConfig{
+	crawler := &crawlerConfig{
 		db:        c.db,
 		links:     make(map[string][]string),
 		domain:    dom,
@@ -47,7 +47,7 @@ func (c *apiConfig) postData(w http.ResponseWriter, req *http.Request) {
 		maxVisits: 20,
 	}
 
-	config.initCrawl(reqUrl.Url)
+	crawler.initCrawl(reqUrl.Url)
 
 	w.WriteHeader(http.StatusOK)
 }

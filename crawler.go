@@ -14,7 +14,7 @@ import (
 
 func (c *crawlerConfig) initCrawl(baseUrl string) {
 	c.wg.Add(1)
-	go c.crawlPage(baseUrl)
+	go c.crawlPage(baseUrl) // recursive
 	c.wg.Wait()
 }
 
@@ -44,7 +44,7 @@ func (c *crawlerConfig) dataFromHTML(normCurrUrl, htmlBody string) error {
 		} else if n.Type == html.ElementNode && n.DataAtom == atom.P {
 			for child := n.FirstChild; child != nil; child = child.NextSibling {
 				if child.Type == html.TextNode {
-					re, err := regexp.Compile(`[^a-zA-Z0-9 .,!?]+`)
+					re, err := regexp.Compile(`[^a-zA-Z0-9 .,!?]+`) // leave letters, numbers, single space and punctuation
 					if err != nil {
 						return err
 					}
@@ -97,7 +97,7 @@ func (c *crawlerConfig) crawlPage(rawCurrUrl string) {
 		c.wg.Done()
 	}()
 
-	if c.maxReached() {
+	if c.maxReached() { // a series of early returns
 		return
 	}
 

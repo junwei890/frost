@@ -27,3 +27,19 @@ func (q *Queries) InsertData(ctx context.Context, arg InsertDataParams) error {
 	_, err := q.db.ExecContext(ctx, insertData, arg.Url, arg.Content)
 	return err
 }
+
+const retrieveData = `-- name: RetrieveData :one
+SELECT url, content FROM data WHERE url=?
+`
+
+type RetrieveDataRow struct {
+	Url     string
+	Content string
+}
+
+func (q *Queries) RetrieveData(ctx context.Context, url string) (RetrieveDataRow, error) {
+	row := q.db.QueryRowContext(ctx, retrieveData, url)
+	var i RetrieveDataRow
+	err := row.Scan(&i.Url, &i.Content)
+	return i, err
+}
