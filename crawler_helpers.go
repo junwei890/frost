@@ -1,4 +1,4 @@
-package crawler
+package main
 
 import (
 	"errors"
@@ -8,9 +8,9 @@ import (
 	"strings"
 )
 
-func getHTML(rawURL string) (string, error) { // getting html, errors under certain conditions so I don't waste time parsing the response
+func getHTML(rawUrl string) (string, error) {
 	client := &http.Client{}
-	res, err := client.Get(rawURL)
+	res, err := client.Get(rawUrl)
 	if err != nil {
 		return "", err
 	}
@@ -31,8 +31,8 @@ func getHTML(rawURL string) (string, error) { // getting html, errors under cert
 	return string(resData), nil
 }
 
-func normalizeURL(rawURL string) (string, error) { // urls of the same are reduced to their base form
-	urlStruct, err := url.Parse(rawURL)
+func normalizeURL(rawUrl string) (string, error) {
+	urlStruct, err := url.Parse(rawUrl)
 	if err != nil {
 		return "", err
 	}

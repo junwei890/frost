@@ -1,53 +1,59 @@
 package main
 
 import (
+	"database/sql"
 	"log"
+	"net/http"
 	"os"
+	"time"
 
-	"github.com/junwei890/rumbling/crawler"
-	"github.com/junwei890/rumbling/parser"
+	"github.com/joho/godotenv"
+	"github.com/junwei890/rumbling/internal/database"
+	_ "github.com/tursodatabase/libsql-client-go/libsql"
 )
 
+type apiConfig struct {
+	db *database.Queries
+}
+
 func main() {
-	arguments := os.Args
-	if len(arguments) < 2 {
-		log.Println("no website provided")
-		os.Exit(1)
-	} else if len(arguments) > 2 {
-		log.Println("too many arguments provided")
-		os.Exit(1)
-	} else {
-		log.Printf("starting crawl of %s", arguments[1])
+	config := apiConfig{}
+
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("no environment variables loaded from .env file")
 	}
 
-	res, err := crawler.InitiateCrawl(arguments[1])
-	if err != nil {
-		log.Fatal(err)
+	dbUrl := os.Getenv("DB_URL")
+	if dbUrl == "" {
+		log.Fatal("no database url provided")
 	}
-	for _, doc := range res {
-		noPunct, err := parser.DelimitByPunct(doc)
-		if err != nil {
-			log.Fatal(err)
-		}
-		cleaned, err := parser.DelimitByStop(noPunct)
-		if err != err {
-			log.Fatal(err)
-		}
-		coGraph, err := parser.CoOccurrence(cleaned)
-		if err != nil {
-			log.Fatal(err)
-		}
-		wordScores, err := parser.DegFreqCalc(coGraph)
-		if err != nil {
-			log.Fatal(err)
-		}
-		termScores, err := parser.TermScoring(wordScores, cleaned)
-		if err != nil {
-			log.Fatal(err)
-		}
-		filtered := parser.Filtering(termScores)
-		for _, keyword := range filtered.Keywords {
-			log.Println(keyword)
-		}
+
+	db, err := sql.Open("libsql", dbUrl)
+	if err != nil {
+		log.Fatal("no connection to database")
+	}
+
+	dbQueries := database.New(db)
+	config.db = dbQueries
+	log.Println("connected to database")
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		log.Fatal("no port provided")
+	}
+
+	plexer := http.NewServeMux()
+
+	plexer.HandleFunc("POST /api/data", config.postData)
+
+	server := &http.Server{
+		Addr:              port,
+		Handler:           plexer,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+	log.Println("server started, serving at http://localhost:8080")
+	if err := server.ListenAndServe(); err != nil {
+		log.Fatal("server not started")
 	}
 }
